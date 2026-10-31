@@ -1,98 +1,275 @@
-.hero-art {
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-  object-fit: contain;
-}
+import { useEffect, useRef, useState } from "react";
+import "./App.css";
+import { analyzeVideo, getVideo } from "./api";
+import { extractVideoId, useLocalStorage } from "./utils";
+import Sidebar from "./components/Sidebar";
+import Home from "./pages/Home";
+import Library from "./pages/Library";
+import ChatPage from "./pages/ChatPage";
+import Settings from "./pages/Settings";
+import Course from "./pages/Course";
 
-.presenter {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  margin-bottom: 16px;
-}
-@media (max-width: 600px) {
-  .presenter { flex-direction: column; }
-}
-.avatar {
-  width: 150px;
-  flex-shrink: 0;
-  animation: float 4s ease-in-out infinite;
-}
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
+const DEMO_ID = "scfeshQ9Pvs";
+const DEFAULTS = {
+  name: "Zineb",
+  email: "",
+  summaryLength: "medium",
+  presenter: true,
+  saveHistory: true,
+};
 
-.bubble {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 14px 16px;
-}
-.bubble::before {
-  content: "";
-  position: absolute;
-  left: -9px;
-  top: 40px;
-  width: 16px;
-  height: 16px;
-  background: #1a2038;
-  border-left: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  transform: rotate(45deg);
-}
-@media (max-width: 600px) {
-  .bubble::before { display: none; }
-}
-.bubble-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-}
-.bubble-actions { display: flex; gap: 6px; }
-.mini {
-  padding: 5px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.3);
-  color: #c7d2fe;
-  font-size: 13px;
-  cursor: pointer;
-}
-.mini:hover { background: var(--primary); color: #fff; }
-.bubble-text {
-  max-height: 170px;
-  overflow-y: auto;
-  line-height: 1.6;
-}
-.cursor { animation: caret 0.8s steps(1) infinite; color: #a5b4fc; }
-@keyframes caret { 50% { opacity: 0; } }
+export default function App() {
+  const [page, setPage] = useState("home");
+  const pageRef = useRef(page);
+  const [courseId, setCourseId] = useState(null);
+  const [courseStart, setCourseStart] = useState(0);
+  const [chatId, setChatId] = useState(null);
+  const [query, setQuery] = useState("");
+  const [library, setLibrary] = useLocalStorage("sf_library", []);
+  const [stored, setStored] = useLocalStorage("sf_settings", DEFAULTS);
+  const settings = { ...DEFAULTS, ...stored };
+  const [cache, setCache] = useState({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [chats, setChats] = useState(() => {
+    try {
+      return settings.saveHistory
+        ? JSON.parse(localStorage.getItem("sf_chats") || "{}")
+        : {};
+    } catch {
+      return {};
+    }
+  });
 
-.eye {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: blink 4s infinite;
-}
-@keyframes blink {
-  0%, 94%, 100% { transform: scaleY(1); }
-  97% { transform: scaleY(0.1); }
-}
-.mouth { transform-box: fill-box; transform-origin: center; }
-.talking .mouth { animation: talk 0.28s ease-in-out infinite alternate; }
-@keyframes talk {
-  from { transform: scaleY(0.6); }
-  to { transform: scaleY(2.6); }
-}
-.arm { transform-origin: 126px 152px; }
-.talking .arm { animation: wave 0.9s ease-in-out infinite alternate; }
-@keyframes wave {
-  from { transform: rotate(-6deg); }
-  to { transform: rotate(10deg); }
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+
+  useEffect(() => {
+    try {
+      if (settings.saveHistory) {
+        localStorage.setItem("sf_chats", JSON.stringify(chats));
+      } else {
+        localStorage.removeItem("sf_chats");
+      }
+    } catch {
+      /* stockage indisponible */
+    }
+  }, [chats, settings.saveHistory]);
+
+  useEffect(() => {
+    setLibrary((l) =>
+      l.map((c) =>
+        c.status === "processing"
+          ? { ...c, status: "error", error: "Analyse interrompue, relance-la." }
+          : c
+      )
+    );
+  }, [setLibrary]);
+
+  useEffect(() => {
+    if (page !== "course" || !courseId || cache[courseId]) return;
+    getVideo(courseId)
+      .then((d) => setCache((c) => ({ ...c, [courseId]: d })))
+      .catch((err) => setLoadError(err.message));
+  }, [page, courseId, cache]);
+
+  const patchCourse = (id, patch) =>
+    setLibrary((l) => l.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+
+  const updateSettings = (patch) =>
+    setStored((s) => ({ ...DEFAULTS, ...s, ...patch }));
+
+  const updateChat = (videoId, fn) =>
+    setChats((prev) => ({ ...prev, [videoId]: fn(prev[videoId] || []) }));
+
+  function openCourse(id, start = 0) {
+    setLoadError("");
+    setCourseId(id);
+    setCourseStart(start);
+    setPage("course");
+  }
+
+  function openChat(id) {
+    setChatId(id);
+    setPage("chat");
+  }
+
+  async function handleAnalyze(url) {
+    setError("");
+    const id = extractVideoId(url);
+    if (!id) {
+      setError("Lien YouTube invalide.");
+      return;
+    }
+    if (library.some((c) => c.id === id && c.status === "ready")) {
+      openCourse(id);
+      return;
+    }
+    setBusy(true);
+    setLibrary((l) => [
+      {
+        id,
+        title: "Analyse en cours...",
+        duration: 0,
+        addedAt: Date.now(),
+        status: "processing",
+        done: false,
+      },
+      ...l.filter((c) => c.id !== id),
+    ]);
+    try {
+      const data = await analyzeVideo(url, settings.summaryLength);
+      setCache((c) => ({ ...c, [id]: data }));
+      patchCourse(id, {
+        title: data.title,
+        duration: data.duration,
+        language: data.language,
+        source: data.source,
+        status: "ready",
+      });
+      if (pageRef.current === "home") openCourse(id);
+    } catch (err) {
+      patchCourse(id, { status: "error", error: err.message, title: url });
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDemo() {
+    setError("");
+    try {
+      const data = await getVideo(DEMO_ID);
+      setCache((c) => ({ ...c, [DEMO_ID]: data }));
+      setLibrary((l) =>
+        l.some((c) => c.id === DEMO_ID)
+          ? l
+          : [
+              {
+                id: DEMO_ID,
+                title: data.title,
+                duration: data.duration,
+                language: data.language,
+                source: data.source,
+                addedAt: Date.now(),
+                status: "ready",
+                done: false,
+              },
+              ...l,
+            ]
+      );
+      openCourse(DEMO_ID);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function deleteCourse(id) {
+    setLibrary((l) => l.filter((c) => c.id !== id));
+    setChats((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    if (courseId === id) setCourseId(null);
+  }
+
+  function toggleDone(id) {
+    setLibrary((l) => l.map((c) => (c.id === id ? { ...c, done: !c.done } : c)));
+  }
+
+  function resetLibrary() {
+    setLibrary([]);
+    setChats({});
+    setCache({});
+    setCourseId(null);
+  }
+
+  const course = library.find((c) => c.id === courseId);
+
+  return (
+    <div className="shell">
+      <Sidebar page={page} onNavigate={setPage} name={settings.name} />
+      <div className="main">
+        <header className="topbar">
+          <div className="search">
+            <input
+              placeholder="Rechercher dans mes cours..."
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage("library");
+              }}
+            />
+          </div>
+          <div className="top-actions">
+            <span className="bell">🔔</span>
+            <span className="avatar-dot">
+              {(settings.name || "?").charAt(0).toUpperCase()}
+            </span>
+          </div>
+        </header>
+
+        <main className="content">
+          {page === "home" && (
+            <Home
+              name={settings.name}
+              library={library}
+              busy={busy}
+              error={error}
+              onAnalyze={handleAnalyze}
+              onDemo={handleDemo}
+              onOpen={openCourse}
+              onChat={openChat}
+            />
+          )}
+          {page === "library" && (
+            <Library
+              library={library}
+              query={query}
+              onOpen={openCourse}
+              onChat={openChat}
+              onDelete={deleteCourse}
+            />
+          )}
+          {page === "chat" && (
+            <ChatPage
+              library={library}
+              chats={chats}
+              updateChat={updateChat}
+              selectedId={chatId}
+              onSelect={setChatId}
+              onSeek={openCourse}
+            />
+          )}
+          {page === "settings" && (
+            <Settings
+              settings={settings}
+              onChange={updateSettings}
+              onReset={resetLibrary}
+            />
+          )}
+          {page === "course" &&
+            (course ? (
+              <Course
+                key={`${course.id}-${courseStart}`}
+                course={course}
+                video={cache[course.id]}
+                error={loadError}
+                initialStart={courseStart}
+                presenter={settings.presenter}
+                messages={chats[course.id] || []}
+                update={(fn) => updateChat(course.id, fn)}
+                onBack={() => setPage("library")}
+                onToggleDone={toggleDone}
+              />
+            ) : (
+              <p className="muted">Cours introuvable.</p>
+            ))}
+        </main>
+      </div>
+    </div>
+  );
 }

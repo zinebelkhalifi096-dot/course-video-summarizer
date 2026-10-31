@@ -10,6 +10,23 @@ AUDIO_DIR = Path("data/audio")
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def get_video_info(url: str) -> dict:
+    """Récupère id, titre et durée SANS télécharger la vidéo."""
+    opts = {
+        "noplaylist": True,
+        "quiet": True,
+        "skip_download": True,
+    }
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+
+    return {
+        "video_id": info["id"],
+        "title": info.get("title"),
+        "duration": info.get("duration"),
+    }
+
+
 def download_audio(url: str) -> dict:
     opts = {
         "format": "bestaudio/best",
