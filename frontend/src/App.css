@@ -1,0 +1,98 @@
+.hero-art {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.presenter {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+@media (max-width: 600px) {
+  .presenter { flex-direction: column; }
+}
+.avatar {
+  width: 150px;
+  flex-shrink: 0;
+  animation: float 4s ease-in-out infinite;
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.bubble {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+.bubble::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: 40px;
+  width: 16px;
+  height: 16px;
+  background: #1a2038;
+  border-left: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  transform: rotate(45deg);
+}
+@media (max-width: 600px) {
+  .bubble::before { display: none; }
+}
+.bubble-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.bubble-actions { display: flex; gap: 6px; }
+.mini {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.3);
+  color: #c7d2fe;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mini:hover { background: var(--primary); color: #fff; }
+.bubble-text {
+  max-height: 170px;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+.cursor { animation: caret 0.8s steps(1) infinite; color: #a5b4fc; }
+@keyframes caret { 50% { opacity: 0; } }
+
+.eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: blink 4s infinite;
+}
+@keyframes blink {
+  0%, 94%, 100% { transform: scaleY(1); }
+  97% { transform: scaleY(0.1); }
+}
+.mouth { transform-box: fill-box; transform-origin: center; }
+.talking .mouth { animation: talk 0.28s ease-in-out infinite alternate; }
+@keyframes talk {
+  from { transform: scaleY(0.6); }
+  to { transform: scaleY(2.6); }
+}
+.arm { transform-origin: 126px 152px; }
+.talking .arm { animation: wave 0.9s ease-in-out infinite alternate; }
+@keyframes wave {
+  from { transform: rotate(-6deg); }
+  to { transform: rotate(10deg); }
+}
