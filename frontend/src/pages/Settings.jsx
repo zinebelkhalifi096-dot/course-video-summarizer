@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Icon from "../components/Icon";
 
 function Toggle({ on, onChange }) {
   return (
@@ -28,7 +29,9 @@ export default function Settings({ settings, onChange, onReset }) {
 
   return (
     <div>
-      <h1 className="page-title">Settings ⚙️</h1>
+      <h1 className="page-title">
+        <Icon name="settings" size={32} /> Settings
+      </h1>
       <p className="muted">Personnalisez votre expérience</p>
 
       <div className="settings-grid">
@@ -52,7 +55,13 @@ export default function Settings({ settings, onChange, onReset }) {
             />
           </label>
           <button className="btn-brown" onClick={save}>
-            {saved ? "Enregistré ✓" : "Save Changes"}
+            {saved ? (
+              <>
+                <Icon name="check" size={16} /> Enregistré
+              </>
+            ) : (
+              "Save Changes"
+            )}
           </button>
         </section>
 

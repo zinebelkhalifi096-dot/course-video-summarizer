@@ -1,3 +1,4 @@
+import Icon from "./Icon";
 import { fmtDate, fmtDuration, thumb } from "../utils";
 
 const LABELS = { ready: "Prêt", processing: "Analyse...", error: "Erreur" };
@@ -12,11 +13,15 @@ export default function CourseCard({ course, onOpen, onChat, onDelete }) {
           {LABELS[course.status]}
         </span>
         {course.duration > 0 && (
-          <span className="badge-time">⏱ {fmtDuration(course.duration)}</span>
+          <span className="badge-time">
+            <Icon name="clock" size={13} /> {fmtDuration(course.duration)}
+          </span>
         )}
       </div>
       <h3>{course.title}</h3>
-      <p className="date">📅 Ajouté le {fmtDate(course.addedAt)}</p>
+      <p className="date">
+        <Icon name="calendar" size={14} /> Ajouté le {fmtDate(course.addedAt)}
+      </p>
       <div className="progress-row">
         <div className="progress">
           <span style={{ width: course.done ? "100%" : "0%" }} />
@@ -29,7 +34,7 @@ export default function CourseCard({ course, onOpen, onChat, onDelete }) {
           disabled={!ready}
           onClick={() => onOpen(course.id)}
         >
-          ▶ {course.done ? "Revoir" : "Voir le cours"}
+          <Icon name="play" size={14} /> {course.done ? "Revoir" : "Voir le cours"}
         </button>
         <button
           className="icon-btn"
@@ -37,7 +42,7 @@ export default function CourseCard({ course, onOpen, onChat, onDelete }) {
           disabled={!ready}
           onClick={() => onChat(course.id)}
         >
-          💬
+          <Icon name="chat" size={18} />
         </button>
         {onDelete && (
           <button
@@ -45,7 +50,7 @@ export default function CourseCard({ course, onOpen, onChat, onDelete }) {
             title="Supprimer"
             onClick={() => onDelete(course.id)}
           >
-            🗑
+            <Icon name="trash" size={18} />
           </button>
         )}
       </div>

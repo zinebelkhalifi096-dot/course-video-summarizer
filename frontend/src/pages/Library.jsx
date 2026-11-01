@@ -1,5 +1,6 @@
 import { useState } from "react";
 import CourseCard from "../components/CourseCard";
+import Icon from "../components/Icon";
 
 export default function Library({ library, query, onOpen, onChat, onDelete }) {
   const [filter, setFilter] = useState("all");
@@ -15,7 +16,9 @@ export default function Library({ library, query, onOpen, onChat, onDelete }) {
     <div>
       <div className="lib-head">
         <div>
-          <h1 className="page-title">My Library 📚</h1>
+          <h1 className="page-title">
+            <Icon name="book" size={32} /> My Library
+          </h1>
           <p className="muted">Retrouve et gère tous tes cours</p>
         </div>
         <select

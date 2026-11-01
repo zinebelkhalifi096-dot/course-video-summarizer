@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import ChatBox from "../components/ChatBox";
+import Icon from "../components/Icon";
 import Presenter from "../components/Presenter";
 import { exportNotes, fmtDuration, fmtTime, section } from "../utils";
 
@@ -66,9 +67,9 @@ export default function Course({
     <div>
       <div className="crumbs">
         <button className="link-btn" onClick={onBack}>
-          ← My Library
+          <Icon name="arrowleft" size={16} /> My Library
         </button>
-        <span>›</span>
+        <Icon name="chevronright" size={14} />
         <span className="crumb-title">{course.title}</span>
         <div className="crumb-actions">
           <label className="check">
@@ -84,7 +85,7 @@ export default function Course({
             disabled={!video}
             onClick={() => exportNotes(video)}
           >
-            Export Notes
+            <Icon name="download" size={16} /> Export Notes
           </button>
         </div>
       </div>
@@ -105,9 +106,19 @@ export default function Course({
               allowFullScreen
             />
             <div className="meta">
-              {video.duration > 0 && <span>⏱ {fmtDuration(video.duration)}</span>}
-              <span>🌐 {video.language}</span>
-              {video.source && <span>📝 {SOURCES[video.source] || video.source}</span>}
+              {video.duration > 0 && (
+                <span>
+                  <Icon name="clock" size={14} /> {fmtDuration(video.duration)}
+                </span>
+              )}
+              <span>
+                <Icon name="globe" size={14} /> {video.language}
+              </span>
+              {video.source && (
+                <span>
+                  <Icon name="file" size={14} /> {SOURCES[video.source] || video.source}
+                </span>
+              )}
             </div>
             <div className="tabs">
               {TABS.map((t) => (
@@ -131,7 +142,9 @@ export default function Course({
               update={update}
               onSeek={setStart}
             />
-            <div className="hint">💡 Clique sur un timestamp pour revenir à la vidéo</div>
+            <div className="hint">
+              <Icon name="bulb" size={20} /> Clique sur un timestamp pour revenir à la vidéo
+            </div>
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { askChat } from "../api";
+import Icon from "./Icon";
 
 const EXAMPLES = [
   "Quels sont les points clés ?",
@@ -63,7 +64,7 @@ export default function ChatBox({ videoId, messages, update, onSeek }) {
                     title={s.text}
                     onClick={() => onSeek(s.start)}
                   >
-                    ▶ {s.timestamp}
+                    <Icon name="play" size={10} /> {s.timestamp}
                   </button>
                 ))}
               </div>
@@ -94,7 +95,7 @@ export default function ChatBox({ videoId, messages, update, onSeek }) {
           onChange={(e) => setQuestion(e.target.value)}
         />
         <button className="send" disabled={asking} aria-label="Envoyer">
-          ➤
+          <Icon name="send" size={18} />
         </button>
       </form>
     </div>

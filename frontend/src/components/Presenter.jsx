@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import Icon from "./Icon";
 
 const LANGS = { fr: "fr-FR", en: "en-US", ar: "ar-SA", es: "es-ES" };
 
@@ -100,10 +101,18 @@ export default function Presenter({ text, lang }) {
           <strong>Je t'explique la vidéo</strong>
           <div className="bubble-actions">
             <button type="button" className="mini" onClick={toggleSpeech}>
-              {speaking ? "⏹ Arrêter" : "🔊 Écouter"}
+              {speaking ? (
+                <>
+                  <Icon name="stop" size={14} /> Arrêter
+                </>
+              ) : (
+                <>
+                  <Icon name="volume" size={14} /> Écouter
+                </>
+              )}
             </button>
             <button type="button" className="mini" onClick={replay}>
-              ↻ Rejouer
+              <Icon name="refresh" size={14} /> Rejouer
             </button>
           </div>
         </div>
