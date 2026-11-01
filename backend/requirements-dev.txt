@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+yt-dlp
+faster-whisper
+av<16
+python-dotenv
+pydantic
+ollama
+numpy
+youtube-transcript-api

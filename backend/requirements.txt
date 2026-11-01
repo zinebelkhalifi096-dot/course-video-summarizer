@@ -1,8 +1,3 @@
-fastapi
-uvicorn[standard]
-yt-dlp
-faster-whisper
-"av<16"
-python-dotenv
-pydantic
-ollama
+-r requirements.txt
+pytest
+httpx

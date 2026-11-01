@@ -8,3 +8,5 @@ chroma_db/
 *.mp3
 *.wav
 *.m4a
+.pytest_cache/
+dist/

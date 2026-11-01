@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
-import { analyzeVideo, getVideo } from "./api";
+import { analyzeVideo, getVideo, listVideos, removeVideo, setDone } from "./api";
 import { extractVideoId, useLocalStorage } from "./utils";
 import Icon from "./components/Icon";
 import Sidebar from "./components/Sidebar";
@@ -26,7 +26,8 @@ export default function App() {
   const [courseStart, setCourseStart] = useState(0);
   const [chatId, setChatId] = useState(null);
   const [query, setQuery] = useState("");
-  const [library, setLibrary] = useLocalStorage("sf_library", []);
+  const [videos, setVideos] = useState([]);
+  const [pending, setPending] = useState([]);
   const [stored, setStored] = useLocalStorage("sf_settings", DEFAULTS);
   const settings = { ...DEFAULTS, ...stored };
   const [cache, setCache] = useState({});
@@ -42,6 +43,24 @@ export default function App() {
       return {};
     }
   });
+
+  const library = [
+    ...pending,
+    ...videos.filter((v) => !pending.some((p) => p.id === v.id)),
+  ];
+
+  const refresh = useCallback(
+    () =>
+      listVideos()
+        .then(setVideos)
+        .catch((err) => setError(err.message)),
+    []
+  );
+
+  useEffect(() => {
+    localStorage.removeItem("sf_library");
+    refresh();
+  }, [refresh]);
 
   useEffect(() => {
     pageRef.current = page;
@@ -60,24 +79,11 @@ export default function App() {
   }, [chats, settings.saveHistory]);
 
   useEffect(() => {
-    setLibrary((l) =>
-      l.map((c) =>
-        c.status === "processing"
-          ? { ...c, status: "error", error: "Analyse interrompue, relance-la." }
-          : c
-      )
-    );
-  }, [setLibrary]);
-
-  useEffect(() => {
     if (page !== "course" || !courseId || cache[courseId]) return;
     getVideo(courseId)
       .then((d) => setCache((c) => ({ ...c, [courseId]: d })))
       .catch((err) => setLoadError(err.message));
   }, [page, courseId, cache]);
-
-  const patchCourse = (id, patch) =>
-    setLibrary((l) => l.map((c) => (c.id === id ? { ...c, ...patch } : c)));
 
   const updateSettings = (patch) =>
     setStored((s) => ({ ...DEFAULTS, ...s, ...patch }));
@@ -104,12 +110,12 @@ export default function App() {
       setError("Lien YouTube invalide.");
       return;
     }
-    if (library.some((c) => c.id === id && c.status === "ready")) {
+    if (videos.some((v) => v.id === id)) {
       openCourse(id);
       return;
     }
     setBusy(true);
-    setLibrary((l) => [
+    setPending((p) => [
       {
         id,
         title: "Analyse en cours...",
@@ -118,21 +124,20 @@ export default function App() {
         status: "processing",
         done: false,
       },
-      ...l.filter((c) => c.id !== id),
+      ...p.filter((c) => c.id !== id),
     ]);
     try {
       const data = await analyzeVideo(url, settings.summaryLength);
       setCache((c) => ({ ...c, [id]: data }));
-      patchCourse(id, {
-        title: data.title,
-        duration: data.duration,
-        language: data.language,
-        source: data.source,
-        status: "ready",
-      });
+      setPending((p) => p.filter((c) => c.id !== id));
+      await refresh();
       if (pageRef.current === "home") openCourse(id);
     } catch (err) {
-      patchCourse(id, { status: "error", error: err.message, title: url });
+      setPending((p) =>
+        p.map((c) =>
+          c.id === id ? { ...c, status: "error", error: err.message, title: url } : c
+        )
+      );
       setError(err.message);
     } finally {
       setBusy(false);
@@ -144,31 +149,22 @@ export default function App() {
     try {
       const data = await getVideo(DEMO_ID);
       setCache((c) => ({ ...c, [DEMO_ID]: data }));
-      setLibrary((l) =>
-        l.some((c) => c.id === DEMO_ID)
-          ? l
-          : [
-              {
-                id: DEMO_ID,
-                title: data.title,
-                duration: data.duration,
-                language: data.language,
-                source: data.source,
-                addedAt: Date.now(),
-                status: "ready",
-                done: false,
-              },
-              ...l,
-            ]
-      );
       openCourse(DEMO_ID);
     } catch (err) {
       setError(err.message);
     }
   }
 
-  function deleteCourse(id) {
-    setLibrary((l) => l.filter((c) => c.id !== id));
+  async function deleteCourse(id) {
+    setPending((p) => p.filter((c) => c.id !== id));
+    if (videos.some((v) => v.id === id)) {
+      try {
+        await removeVideo(id);
+        await refresh();
+      } catch (err) {
+        setError(err.message);
+      }
+    }
     setChats((prev) => {
       const next = { ...prev };
       delete next[id];
@@ -177,15 +173,30 @@ export default function App() {
     if (courseId === id) setCourseId(null);
   }
 
-  function toggleDone(id) {
-    setLibrary((l) => l.map((c) => (c.id === id ? { ...c, done: !c.done } : c)));
+  async function toggleDone(id) {
+    const current = videos.find((v) => v.id === id);
+    if (!current) return;
+    const done = !current.done;
+    setVideos((vs) => vs.map((v) => (v.id === id ? { ...v, done } : v)));
+    try {
+      await setDone(id, done);
+    } catch (err) {
+      setError(err.message);
+      refresh();
+    }
   }
 
-  function resetLibrary() {
-    setLibrary([]);
+  async function resetLibrary() {
+    try {
+      await Promise.all(videos.map((v) => removeVideo(v.id)));
+    } catch (err) {
+      setError(err.message);
+    }
+    setPending([]);
     setChats({});
     setCache({});
     setCourseId(null);
+    await refresh();
   }
 
   const course = library.find((c) => c.id === courseId);
